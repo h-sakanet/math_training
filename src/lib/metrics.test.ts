@@ -31,7 +31,8 @@ describe("metrics", () => {
         solvedAt: 2,
         elapsedMs: 1100,
         wrongCount: 0,
-        firstTryCorrect: true
+        firstTryCorrect: true,
+        isSolved: true
       },
       {
         questionId: "q2",
@@ -45,7 +46,8 @@ describe("metrics", () => {
         solvedAt: 2,
         elapsedMs: 2000,
         wrongCount: 2,
-        firstTryCorrect: false
+        firstTryCorrect: false,
+        isSolved: true
       },
       {
         questionId: "q3",
@@ -59,7 +61,8 @@ describe("metrics", () => {
         solvedAt: 2,
         elapsedMs: 1500,
         wrongCount: 0,
-        firstTryCorrect: true
+        firstTryCorrect: true,
+        isSolved: true
       }
     ]);
 

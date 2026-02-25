@@ -26,7 +26,8 @@ function makeAttempt(
     solvedAt: 2,
     elapsedMs: 1000,
     wrongCount,
-    firstTryCorrect: wrongCount === 0
+    firstTryCorrect: wrongCount === 0,
+    isSolved: true
   };
 }
 

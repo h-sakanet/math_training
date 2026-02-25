@@ -1,22 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   angleLabelPoint,
-  dot,
   formatBaseFiguresFragment,
-  normalize,
-  sub,
   transformFigure
 } from "./geometry";
 import { createBaseFigures } from "./templates";
 import type { AngleDef, SymmetryVariant } from "./types";
-
-function pointLineDistance(point: { x: number; y: number }, lineA: { x: number; y: number }, lineB: { x: number; y: number }): number {
-  const ab = sub(lineB, lineA);
-  const ap = sub(point, lineA);
-  const area2 = Math.abs(ab.x * ap.y - ab.y * ap.x);
-  const length = Math.hypot(ab.x, ab.y);
-  return area2 / length;
-}
 
 function sampleAngle(): AngleDef {
   return {
@@ -65,34 +54,10 @@ describe("geometry", () => {
     expect(parsed).toHaveLength(4);
   });
 
-  it("places label on tangency for both rays in tangent_touch mode", () => {
+  it("keeps labelNudge behavior", () => {
     const angleDef = sampleAngle();
-    const labelPoint = angleLabelPoint(angleDef, { mode: "tangent_touch" });
-
-    const d1 = pointLineDistance(labelPoint, angleDef.vertex, angleDef.rayA);
-    const d2 = pointLineDistance(labelPoint, angleDef.vertex, angleDef.rayB);
-    expect(Math.abs(d1 - angleDef.hitRadius)).toBeLessThan(1e-6);
-    expect(Math.abs(d2 - angleDef.hitRadius)).toBeLessThan(1e-6);
-
-    const rayDirA = normalize(sub(angleDef.rayA, angleDef.vertex));
-    const towardLabel = normalize(sub(labelPoint, angleDef.vertex));
-    expect(dot(rayDirA, towardLabel)).toBeGreaterThan(0);
-  });
-
-  it("falls back safely for degenerate angles in tangent_touch mode", () => {
-    const degenerate: AngleDef = {
-      ...sampleAngle(),
-      rayB: { x: 100.0000001, y: 100.0000001 }
-    };
-    const labelPoint = angleLabelPoint(degenerate, { mode: "tangent_touch", distance: 20 });
-    expect(Number.isFinite(labelPoint.x)).toBe(true);
-    expect(Number.isFinite(labelPoint.y)).toBe(true);
-  });
-
-  it("keeps legacy free_drag behavior with labelNudge", () => {
-    const angleDef = sampleAngle();
-    const labelPoint = angleLabelPoint(angleDef, { mode: "free_drag", distance: 20 });
-    const withoutNudge = angleLabelPoint({ ...angleDef, labelNudge: { x: 0, y: 0 } }, { mode: "free_drag", distance: 20 });
+    const labelPoint = angleLabelPoint(angleDef, 20);
+    const withoutNudge = angleLabelPoint({ ...angleDef, labelNudge: { x: 0, y: 0 } }, 20);
     expect(labelPoint.x).toBeCloseTo(withoutNudge.x + angleDef.labelNudge.x);
     expect(labelPoint.y).toBeCloseTo(withoutNudge.y + angleDef.labelNudge.y);
   });

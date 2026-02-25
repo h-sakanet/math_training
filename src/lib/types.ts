@@ -9,7 +9,7 @@ export type ArrangementKind =
   | "single_180"
   | "pair_180";
 export type SymmetryVariant = "origin" | "mirror_lr" | "mirror_ud" | "mirror_both";
-export type LabelPlacementMode = "tangent_touch" | "free_drag";
+export type LabelPlacementMode = "free_drag";
 export type DifficultyLevel = 1 | 2 | 3 | 4 | 5;
 
 export interface Point {
@@ -87,10 +87,11 @@ export interface AttemptLog {
   variant: SymmetryVariant;
   arrangementKind: ArrangementKind;
   startedAt: number;
-  solvedAt: number;
-  elapsedMs: number;
+  solvedAt: number | null;
+  elapsedMs: number | null;
   wrongCount: number;
-  firstTryCorrect: boolean;
+  firstTryCorrect: boolean | null;
+  isSolved: boolean;
 }
 
 export interface SessionLog {
@@ -102,6 +103,7 @@ export interface SessionLog {
   attempts: AttemptLog[];
   medianMs: number;
   errorRate: number;
+  completed?: boolean;
 }
 
 export interface PatternStats {

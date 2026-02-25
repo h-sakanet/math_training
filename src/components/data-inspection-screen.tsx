@@ -21,7 +21,8 @@ type SortOrder = "asc" | "desc";
 type CatalogEntry = ReturnType<typeof buildQuestionCatalog>[number];
 type UnifiedStats = {
   attempts: number;
-  totalMs: number;
+  solvedCount: number;
+  totalSolvedMs: number;
   correct: number;
 };
 
@@ -98,11 +99,14 @@ export function DataInspectionScreen({
         const key = attempt.sourcePatternId && attempt.arrangementKind
           ? unifiedPatternKey(attempt.sourcePatternId, attempt.arrangementKind)
           : unifiedPatternKeyFromQuestionKey(attempt.questionKey);
-        const current = map.get(key) ?? { attempts: 0, totalMs: 0, correct: 0 };
+        const current = map.get(key) ?? { attempts: 0, solvedCount: 0, totalSolvedMs: 0, correct: 0 };
         current.attempts += 1;
-        current.totalMs += attempt.elapsedMs;
-        if (attempt.wrongCount === 0) {
-          current.correct += 1;
+        if (attempt.isSolved && typeof attempt.elapsedMs === "number") {
+          current.solvedCount += 1;
+          current.totalSolvedMs += attempt.elapsedMs;
+          if (attempt.wrongCount === 0) {
+            current.correct += 1;
+          }
         }
         map.set(key, current);
       }
@@ -123,8 +127,9 @@ export function DataInspectionScreen({
     const raw = [...representativeByKey.entries()].map(([key, entry]) => {
       const stat = statsByUnifiedKey.get(key);
       const attempts = stat?.attempts ?? 0;
-      const averageMs = attempts === 0 ? 0 : Math.round((stat?.totalMs ?? 0) / attempts);
-      const accuracyRate = attempts === 0 ? 0 : (stat?.correct ?? 0) / attempts;
+      const solvedCount = stat?.solvedCount ?? 0;
+      const averageMs = solvedCount === 0 ? 0 : Math.round((stat?.totalSolvedMs ?? 0) / solvedCount);
+      const accuracyRate = solvedCount === 0 ? 0 : (stat?.correct ?? 0) / solvedCount;
       return {
         key,
         entry,

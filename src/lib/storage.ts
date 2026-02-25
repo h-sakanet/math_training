@@ -1,6 +1,6 @@
 import { openDB } from "idb";
 import { median } from "./math";
-import type { PatternStats, SessionLog } from "./types";
+import type { AttemptLog, PatternStats, SessionLog } from "./types";
 
 type PatternStatsRecord = PatternStats & {
   elapsedSamples: number[];
@@ -30,6 +30,7 @@ type AppDb = {
 const DB_NAME = "math-training-db";
 const DB_VERSION = 3;
 const MIGRATION_NOTICE_KEY = "migration_notice_v3";
+let progressWriteQueue: Promise<void> = Promise.resolve();
 
 const dbPromise = openDB<AppDb>(DB_NAME, DB_VERSION, {
   upgrade(db, oldVersion) {
@@ -64,6 +65,48 @@ const dbPromise = openDB<AppDb>(DB_NAME, DB_VERSION, {
   }
 });
 
+function normalizeAttempt(attempt: AttemptLog): AttemptLog {
+  const solvedAt = typeof attempt.solvedAt === "number" ? attempt.solvedAt : null;
+  const elapsedMs = typeof attempt.elapsedMs === "number" ? attempt.elapsedMs : null;
+  const isSolved = typeof attempt.isSolved === "boolean"
+    ? attempt.isSolved
+    : solvedAt !== null && elapsedMs !== null;
+  const firstTryCorrect = typeof attempt.firstTryCorrect === "boolean"
+    ? attempt.firstTryCorrect
+    : isSolved
+      ? attempt.wrongCount === 0
+      : null;
+
+  return {
+    ...attempt,
+    solvedAt,
+    elapsedMs,
+    firstTryCorrect,
+    isSolved
+  };
+}
+
+function normalizeSession(session: SessionLog): SessionLog {
+  const attempts = session.attempts.map((attempt) => normalizeAttempt(attempt));
+  const solvedAttempts = attempts.filter(
+    (attempt) => attempt.isSolved && typeof attempt.elapsedMs === "number"
+  );
+  const elapsedSamples = solvedAttempts.map((attempt) => attempt.elapsedMs as number);
+  const errorCount = solvedAttempts.filter((attempt) => attempt.wrongCount > 0).length;
+  const completed = typeof session.completed === "boolean"
+    ? session.completed
+    : attempts.length > 0 && attempts.every((attempt) => attempt.isSolved);
+
+  return {
+    ...session,
+    endedAt: typeof session.endedAt === "number" ? session.endedAt : 0,
+    attempts,
+    medianMs: elapsedSamples.length === 0 ? 0 : median(elapsedSamples),
+    errorRate: solvedAttempts.length === 0 ? 0 : errorCount / solvedAttempts.length,
+    completed
+  };
+}
+
 export async function consumeMigrationNotice(): Promise<string | null> {
   const db = await dbPromise;
   const tx = db.transaction("meta", "readwrite");
@@ -81,7 +124,7 @@ export async function consumeMigrationNotice(): Promise<string | null> {
 export async function getSessions(): Promise<SessionLog[]> {
   const db = await dbPromise;
   const sessions = await db.getAll("sessions");
-  return sessions.sort((a, b) => b.startedAt - a.startedAt);
+  return sessions.map((session) => normalizeSession(session)).sort((a, b) => b.startedAt - a.startedAt);
 }
 
 export async function getPatternStats(): Promise<PatternStats[]> {
@@ -99,14 +142,22 @@ export async function getPatternStats(): Promise<PatternStats[]> {
 }
 
 export async function saveSession(session: SessionLog): Promise<void> {
+  await progressWriteQueue.catch(() => undefined);
   const db = await dbPromise;
   const tx = db.transaction(["sessions", "patternStats"], "readwrite");
+  const normalizedSession = normalizeSession({
+    ...session,
+    completed: true
+  });
 
-  await tx.objectStore("sessions").put(session);
+  await tx.objectStore("sessions").put(normalizedSession);
 
   const statsStore = tx.objectStore("patternStats");
 
-  for (const attempt of session.attempts) {
+  for (const attempt of normalizedSession.attempts) {
+    if (!attempt.isSolved || attempt.solvedAt === null || attempt.elapsedMs === null) {
+      continue;
+    }
     const current = await statsStore.get(attempt.patternId);
     const record: PatternStatsRecord = current ?? {
       patternId: attempt.patternId,
@@ -132,7 +183,23 @@ export async function saveSession(session: SessionLog): Promise<void> {
   await tx.done;
 }
 
+export async function saveSessionProgress(session: SessionLog): Promise<void> {
+  const progress = normalizeSession({
+    ...session,
+    completed: false,
+    endedAt: 0
+  });
+  progressWriteQueue = progressWriteQueue
+    .catch(() => undefined)
+    .then(async () => {
+      const db = await dbPromise;
+      await db.put("sessions", progress);
+    });
+  await progressWriteQueue;
+}
+
 export async function resetAllData(): Promise<void> {
+  await progressWriteQueue.catch(() => undefined);
   const db = await dbPromise;
   const tx = db.transaction(["sessions", "patternStats"], "readwrite");
   await tx.objectStore("sessions").clear();

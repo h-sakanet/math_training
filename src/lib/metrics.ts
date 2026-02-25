@@ -5,9 +5,12 @@ export function buildSessionMetrics(attempts: AttemptLog[]): {
   medianMs: number;
   errorRate: number;
 } {
-  const medianMs = median(attempts.map((attempt) => attempt.elapsedMs));
-  const errorCount = attempts.filter((attempt) => attempt.wrongCount > 0).length;
-  const errorRate = attempts.length === 0 ? 0 : errorCount / attempts.length;
+  const solvedAttempts = attempts.filter(
+    (attempt) => attempt.isSolved && typeof attempt.elapsedMs === "number"
+  );
+  const medianMs = median(solvedAttempts.map((attempt) => attempt.elapsedMs as number));
+  const errorCount = solvedAttempts.filter((attempt) => attempt.wrongCount > 0).length;
+  const errorRate = solvedAttempts.length === 0 ? 0 : errorCount / solvedAttempts.length;
   return { medianMs, errorRate };
 }
 

@@ -15,14 +15,17 @@ export function ResultsScreen({
   onRetry,
   onBackHome
 }: ResultsScreenProps) {
-  const averageMs = latestSession.attempts.length === 0
+  const solvedAttempts = latestSession.attempts.filter(
+    (attempt) => attempt.isSolved && typeof attempt.elapsedMs === "number"
+  );
+  const averageMs = solvedAttempts.length === 0
     ? 0
     : Math.round(
-      latestSession.attempts.reduce((sum, attempt) => sum + attempt.elapsedMs, 0) / latestSession.attempts.length
+      solvedAttempts.reduce((sum, attempt) => sum + (attempt.elapsedMs as number), 0) / solvedAttempts.length
     );
-  const accuracyRate = latestSession.attempts.length === 0
+  const accuracyRate = solvedAttempts.length === 0
     ? 0
-    : latestSession.attempts.filter((attempt) => attempt.wrongCount === 0).length / latestSession.attempts.length;
+    : solvedAttempts.filter((attempt) => attempt.wrongCount === 0).length / solvedAttempts.length;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4">

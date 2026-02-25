@@ -3,7 +3,12 @@ import { Hourglass } from "@phosphor-icons/react";
 import { AngleDiagram } from "@/components/angle-diagram";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isPairReasoningAnswerCorrect, isSingleReasoningAnswerCorrect } from "@/lib/metrics";
+import {
+  buildSessionMetrics,
+  isPairReasoningAnswerCorrect,
+  isSingleReasoningAnswerCorrect
+} from "@/lib/metrics";
+import { saveSessionProgress } from "@/lib/storage";
 import type { AttemptLog, SessionLog, SessionRun } from "@/lib/types";
 
 type TrainingScreenProps = {
@@ -24,28 +29,41 @@ export function TrainingScreen({ run, onFinish }: TrainingScreenProps) {
   const startPerfMsRef = React.useRef(performance.now());
   const startEpochRef = React.useRef(Date.now());
   const wrongCountRef = React.useRef(0);
+  const attemptsRef = React.useRef<AttemptLog[]>([]);
 
   const question = run.questions[index];
   const isLast = index === run.questions.length - 1;
 
-  React.useEffect(() => {
-    startPerfMsRef.current = performance.now();
-    startEpochRef.current = Date.now();
-    setWrongCount(0);
-    wrongCountRef.current = 0;
-    setSelectedAngleIds([]);
-    setFeedbackStatus(null);
-    setFeedbackAngleIds([]);
-    setFeedbackAnchorAngleId(null);
-    setReadyForNext(false);
-  }, [index]);
+  const persistProgress = React.useCallback(
+    (nextAttempts: AttemptLog[]) => {
+      const metrics = buildSessionMetrics(nextAttempts);
+      const snapshot: SessionLog = {
+        id: run.id,
+        unitId: run.unitId,
+        level: run.level,
+        startedAt: run.startedAt,
+        endedAt: 0,
+        attempts: nextAttempts,
+        medianMs: metrics.medianMs,
+        errorRate: metrics.errorRate,
+        completed: false
+      };
+      void saveSessionProgress(snapshot);
+    },
+    [run.id, run.level, run.startedAt, run.unitId]
+  );
 
-  function markCorrect(markedAngleIds: string[]) {
-    const solvedAt = Date.now();
-    const elapsedMs = Math.max(1, Math.round(performance.now() - startPerfMsRef.current));
-    const currentWrongCount = wrongCountRef.current;
+  const setAndPersistAttempts = React.useCallback(
+    (nextAttempts: AttemptLog[]) => {
+      attemptsRef.current = nextAttempts;
+      setAttempts(nextAttempts);
+      persistProgress(nextAttempts);
+    },
+    [persistProgress]
+  );
 
-    const attempt: AttemptLog = {
+  const createPresentedAttempt = React.useCallback(
+    (startedAt: number): AttemptLog => ({
       questionId: question.id,
       questionKey: question.questionKey,
       patternId: question.patternId,
@@ -53,14 +71,62 @@ export function TrainingScreen({ run, onFinish }: TrainingScreenProps) {
       baseFigureId: question.baseFigureId,
       variant: question.variant,
       arrangementKind: question.arrangementKind,
-      startedAt: startEpochRef.current,
+      startedAt,
+      solvedAt: null,
+      elapsedMs: null,
+      wrongCount: 0,
+      firstTryCorrect: null,
+      isSolved: false
+    }),
+    [question]
+  );
+
+  const updateCurrentAttempt = React.useCallback(
+    (updater: (attempt: AttemptLog) => AttemptLog) => {
+      const currentAttempts = attemptsRef.current;
+      const existingIndex = currentAttempts.findIndex((attempt) => attempt.questionId === question.id);
+      const fallback = createPresentedAttempt(startEpochRef.current);
+      const baseAttempt = existingIndex >= 0 ? currentAttempts[existingIndex] : fallback;
+      const nextAttempt = updater(baseAttempt);
+      const nextAttempts = existingIndex >= 0
+        ? currentAttempts.map((attempt, idx) => (idx === existingIndex ? nextAttempt : attempt))
+        : [...currentAttempts, nextAttempt];
+      setAndPersistAttempts(nextAttempts);
+      return nextAttempt;
+    },
+    [createPresentedAttempt, question.id, setAndPersistAttempts]
+  );
+
+  React.useEffect(() => {
+    startPerfMsRef.current = performance.now();
+    const startedAt = Date.now();
+    startEpochRef.current = startedAt;
+    setWrongCount(0);
+    wrongCountRef.current = 0;
+    setSelectedAngleIds([]);
+    setFeedbackStatus(null);
+    setFeedbackAngleIds([]);
+    setFeedbackAnchorAngleId(null);
+    setReadyForNext(false);
+    const currentAttempts = attemptsRef.current;
+    if (!currentAttempts.some((attempt) => attempt.questionId === question.id)) {
+      setAndPersistAttempts([...currentAttempts, createPresentedAttempt(startedAt)]);
+    }
+  }, [createPresentedAttempt, index, question.id, setAndPersistAttempts]);
+
+  function markCorrect(markedAngleIds: string[]) {
+    const solvedAt = Date.now();
+    const elapsedMs = Math.max(1, Math.round(performance.now() - startPerfMsRef.current));
+    const currentWrongCount = wrongCountRef.current;
+
+    updateCurrentAttempt((attempt) => ({
+      ...attempt,
       solvedAt,
       elapsedMs,
       wrongCount: currentWrongCount,
-      firstTryCorrect: currentWrongCount === 0
-    };
-
-    setAttempts((prev) => [...prev, attempt]);
+      firstTryCorrect: currentWrongCount === 0,
+      isSolved: true
+    }));
     setFeedbackStatus("correct");
     setFeedbackAngleIds(markedAngleIds);
     setFeedbackAnchorAngleId(markedAngleIds[markedAngleIds.length - 1] ?? null);
@@ -68,18 +134,22 @@ export function TrainingScreen({ run, onFinish }: TrainingScreenProps) {
   }
 
   function markWrong(markedAngleIds: string[]) {
-    incrementWrongCount();
+    const nextWrongCount = incrementWrongCount();
+    updateCurrentAttempt((attempt) => ({
+      ...attempt,
+      wrongCount: nextWrongCount,
+      firstTryCorrect: null
+    }));
     setFeedbackStatus("incorrect");
     setFeedbackAngleIds(markedAngleIds);
     setFeedbackAnchorAngleId(markedAngleIds[markedAngleIds.length - 1] ?? null);
   }
 
-  function incrementWrongCount(): void {
-    setWrongCount((prev) => {
-      const next = prev + 1;
-      wrongCountRef.current = next;
-      return next;
-    });
+  function incrementWrongCount(): number {
+    const next = wrongCountRef.current + 1;
+    wrongCountRef.current = next;
+    setWrongCount(next);
+    return next;
   }
 
   function onTapAngle(angleId: string) {
@@ -135,15 +205,10 @@ export function TrainingScreen({ run, onFinish }: TrainingScreenProps) {
     }
 
     const endedAt = Date.now();
-    const solvedAttempts = attempts;
-
-    const errorCount = solvedAttempts.filter((attempt) => attempt.wrongCount > 0).length;
-    const sortedElapsed = solvedAttempts.map((attempt) => attempt.elapsedMs).sort((a, b) => a - b);
-    const middle = Math.floor(sortedElapsed.length / 2);
-    const medianMs =
-      sortedElapsed.length % 2 === 0
-        ? Math.round((sortedElapsed[middle - 1] + sortedElapsed[middle]) / 2)
-        : sortedElapsed[middle];
+    const solvedAttempts = attempts.length === attemptsRef.current.length
+      ? attempts
+      : attemptsRef.current;
+    const metrics = buildSessionMetrics(solvedAttempts);
 
     const session: SessionLog = {
       id: run.id,
@@ -152,8 +217,9 @@ export function TrainingScreen({ run, onFinish }: TrainingScreenProps) {
       startedAt: run.startedAt,
       endedAt,
       attempts: solvedAttempts,
-      medianMs,
-      errorRate: solvedAttempts.length === 0 ? 0 : errorCount / solvedAttempts.length
+      medianMs: metrics.medianMs,
+      errorRate: metrics.errorRate,
+      completed: true
     };
 
     onFinish(session);

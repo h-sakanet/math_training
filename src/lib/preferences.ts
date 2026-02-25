@@ -1,15 +1,10 @@
 import type { LabelPlacementMode } from "./types";
 
 export const LABEL_PLACEMENT_MODE_KEY = "math_training.label_placement_mode";
-export const DEFAULT_LABEL_PLACEMENT_MODE: LabelPlacementMode = "tangent_touch";
-
-const VALID_LABEL_PLACEMENT_MODES: readonly LabelPlacementMode[] = ["tangent_touch", "free_drag"];
+export const DEFAULT_LABEL_PLACEMENT_MODE: LabelPlacementMode = "free_drag";
 
 function isLabelPlacementMode(value: unknown): value is LabelPlacementMode {
-  return (
-    typeof value === "string" &&
-    (VALID_LABEL_PLACEMENT_MODES as readonly string[]).includes(value)
-  );
+  return value === "free_drag";
 }
 
 function readStorage(): Storage | null {

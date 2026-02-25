@@ -31,14 +31,9 @@ import {
   validateBaseFigure,
   validateQuestionPattern
 } from "@/lib/templates";
-import {
-  getLabelPlacementMode,
-  setLabelPlacementMode
-} from "@/lib/preferences";
 import type {
   AngleDef,
   BaseFigure,
-  LabelPlacementMode,
   Point,
   QuestionPattern,
   ReasoningMode
@@ -326,8 +321,6 @@ export function TemplateCalibrationScreen() {
   const initialData = React.useMemo(() => initializeCalibrationData(), []);
 
   const [globalHitRadius, setGlobalHitRadius] = React.useState<number>(initialData.globalHitRadius);
-  const [labelPlacementMode, setCurrentLabelPlacementMode] =
-    React.useState<LabelPlacementMode>(() => getLabelPlacementMode());
   const [baseFigures, setBaseFigures] = React.useState<BaseFigure[]>(initialData.baseFigures);
   const [patterns, setPatterns] = React.useState<QuestionPattern[]>(initialData.patterns);
   const [editorTab, setEditorTab] = React.useState<"figures" | "patterns">("figures");
@@ -413,9 +406,6 @@ export function TemplateCalibrationScreen() {
   }
 
   function onStartDragLabel(event: React.PointerEvent<SVGCircleElement>, figure: BaseFigure, angleId: string) {
-    if (labelPlacementMode !== "free_drag") {
-      return;
-    }
     if (!svgRef.current) {
       return;
     }
@@ -510,16 +500,6 @@ export function TemplateCalibrationScreen() {
   function onChangeGlobalHitRadius(nextValue: number) {
     setGlobalHitRadius(nextValue);
     setBaseFigures((current) => applyGlobalHitRadius(current, nextValue));
-  }
-
-  function onChangeLabelPlacementMode(mode: LabelPlacementMode) {
-    setCurrentLabelPlacementMode(mode);
-    setLabelPlacementMode(mode);
-    toast.success(
-      mode === "tangent_touch"
-        ? "角ラベル配置を「接触固定」に切り替えました"
-        : "角ラベル配置を「自由移動」に切り替えました"
-    );
   }
 
   function onAddAngle(figureId: string) {
@@ -734,7 +714,7 @@ export function TemplateCalibrationScreen() {
   function onExportCalibrationCsv() {
     const csv = buildCalibrationCsv(baseFigures, patterns, {
       globalHitRadius,
-      labelPlacementMode
+      labelPlacementMode: "free_drag"
     });
     triggerCsvDownload(buildExportFileName(), csv);
     toast.success("CSVをエクスポートしました");
@@ -798,10 +778,6 @@ export function TemplateCalibrationScreen() {
       setGlobalHitRadius(importedRadius);
       setBaseFigures(normalizedFigures);
       setPatterns(parsed.questionPatterns);
-      if (parsed.settings?.labelPlacementMode) {
-        setCurrentLabelPlacementMode(parsed.settings.labelPlacementMode);
-        setLabelPlacementMode(parsed.settings.labelPlacementMode);
-      }
       setSelectedFigureId(normalizedFigures[0]?.id ?? "");
       setSelectedAngleId(normalizedFigures[0]?.angles[0]?.id ?? null);
       setSelectedPatternId(null);
@@ -985,10 +961,7 @@ export function TemplateCalibrationScreen() {
                 ))}
 
                 {selectedFigure.angles.map((angleDef) => {
-                  const label = angleLabelPoint(angleDef, {
-                    mode: labelPlacementMode,
-                    distance: 20
-                  });
+                  const label = angleLabelPoint(angleDef, 20);
                   const isSelected = selectedAngleId === angleDef.id;
                   return (
                     <g key={angleDef.id}>
@@ -998,9 +971,7 @@ export function TemplateCalibrationScreen() {
                         r={12}
                         fill="transparent"
                         stroke="none"
-                        style={{
-                          cursor: labelPlacementMode === "free_drag" ? "grab" : "default"
-                        }}
+                        style={{ cursor: "grab" }}
                         onPointerDown={(event) => onStartDragLabel(event, selectedFigure, angleDef.id)}
                         onClick={() => setSelectedAngleId(angleDef.id)}
                       />
@@ -1089,30 +1060,6 @@ export function TemplateCalibrationScreen() {
                   <p className="text-xs text-muted-foreground">
                     図形ごとの個別設定は行わず、すべての角に同じ半径を適用します。
                   </p>
-                  <div className="space-y-1 pt-1">
-                    <span className="text-xs font-medium">角ラベル配置</span>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={labelPlacementMode === "tangent_touch" ? "default" : "outline"}
-                        onClick={() => onChangeLabelPlacementMode("tangent_touch")}
-                      >
-                        接触固定
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={labelPlacementMode === "free_drag" ? "default" : "outline"}
-                        onClick={() => onChangeLabelPlacementMode("free_drag")}
-                      >
-                        自由移動
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      接触固定: 辺に接する位置へ自動配置 / 自由移動: ドラッグで微調整
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
 

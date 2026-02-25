@@ -1,4 +1,3 @@
-import { DEFAULT_LABEL_PLACEMENT_MODE } from "./preferences";
 import type { BaseFigure, LabelPlacementMode, QuestionPattern } from "./types";
 
 const CSV_HEADER = "format_version,exported_at,bundle_base64";
@@ -118,7 +117,7 @@ function isQuestionPatternLike(value: unknown): value is QuestionPattern {
 }
 
 function isLabelPlacementMode(value: unknown): value is LabelPlacementMode {
-  return value === "tangent_touch" || value === "free_drag";
+  return value === "free_drag";
 }
 
 function isCalibrationSettings(value: unknown): value is CalibrationSettings {
@@ -129,7 +128,10 @@ function isCalibrationSettings(value: unknown): value is CalibrationSettings {
     globalHitRadius?: unknown;
     labelPlacementMode?: unknown;
   };
-  return typeof cast.globalHitRadius === "number" && isLabelPlacementMode(cast.labelPlacementMode);
+  return (
+    typeof cast.globalHitRadius === "number" &&
+    typeof cast.labelPlacementMode === "string"
+  );
 }
 
 function isCalibrationBundle(value: unknown): value is CalibrationBundle {
@@ -211,8 +213,10 @@ export function parseCalibrationCsv(csvText: string): CalibrationBundle {
       parsed.baseFigures[0]?.angles[0]?.hitRadius ?? 22;
     parsed.settings = {
       globalHitRadius: fallbackRadius,
-      labelPlacementMode: DEFAULT_LABEL_PLACEMENT_MODE
+      labelPlacementMode: "free_drag"
     };
+  } else if (!isLabelPlacementMode(parsed.settings.labelPlacementMode)) {
+    parsed.settings.labelPlacementMode = "free_drag";
   }
 
   return parsed;

@@ -1,7 +1,6 @@
 import type {
   AngleDef,
   BaseFigure,
-  LabelPlacementMode,
   Point,
   QuestionPattern,
   Segment,
@@ -49,41 +48,13 @@ export function bisectorDirection(angle: AngleDef): Point {
   return normalize(sum);
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 function freeDragLabelPoint(angle: AngleDef, distance: number): Point {
   const direction = bisectorDirection(angle);
   const base = add(angle.vertex, scale(direction, distance));
   return add(base, angle.labelNudge);
 }
 
-function tangentTouchLabelPoint(angle: AngleDef, fallbackDistance: number): Point {
-  const rayAVector = sub(angle.rayA, angle.vertex);
-  const rayBVector = sub(angle.rayB, angle.vertex);
-  if (norm(rayAVector) < 1e-6 || norm(rayBVector) < 1e-6) {
-    return freeDragLabelPoint(angle, fallbackDistance);
-  }
-
-  const u = normalize(rayAVector);
-  const v = normalize(rayBVector);
-  const theta = Math.acos(clamp(dot(u, v), -1, 1));
-  const sinHalf = Math.sin(theta / 2);
-  if (Math.abs(sinHalf) < 1e-4) {
-    return freeDragLabelPoint(angle, fallbackDistance);
-  }
-
-  const direction = bisectorDirection(angle);
-  const distanceFromVertex = angle.hitRadius / sinHalf;
-  if (!Number.isFinite(distanceFromVertex)) {
-    return freeDragLabelPoint(angle, fallbackDistance);
-  }
-  return add(angle.vertex, scale(direction, distanceFromVertex));
-}
-
 type AngleLabelPointOptions = {
-  mode?: LabelPlacementMode;
   distance?: number;
 };
 
@@ -95,12 +66,7 @@ export function angleLabelPoint(
     typeof optionsOrDistance === "number"
       ? ({ distance: optionsOrDistance } satisfies AngleLabelPointOptions)
       : optionsOrDistance;
-  const mode: LabelPlacementMode = options.mode ?? "free_drag";
   const distance = options.distance ?? 22;
-
-  if (mode === "tangent_touch") {
-    return tangentTouchLabelPoint(angle, distance);
-  }
   return freeDragLabelPoint(angle, distance);
 }
 

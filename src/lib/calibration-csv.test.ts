@@ -45,6 +45,6 @@ describe("calibration csv", () => {
     const parsed = parseCalibrationCsv(csv);
     expect(parsed.baseFigures).toEqual(baseFigures);
     expect(parsed.questionPatterns).toEqual(patterns);
-    expect(parsed.settings?.labelPlacementMode).toBe("tangent_touch");
+    expect(parsed.settings?.labelPlacementMode).toBe("free_drag");
   });
 });

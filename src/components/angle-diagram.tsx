@@ -1,6 +1,6 @@
+import * as React from "react";
 import { cn } from "@/lib/utils";
 import { angleLabelPoint } from "@/lib/geometry";
-import { getLabelPlacementMode } from "@/lib/preferences";
 import type { QuestionInstance } from "@/lib/types";
 
 type AngleDiagramProps = {
@@ -13,6 +13,16 @@ type AngleDiagramProps = {
   disabled?: boolean;
 };
 
+type LabelLayoutEntry = {
+  id: string;
+  x: number;
+  y: number;
+  hitRadius: number;
+  vertexX: number;
+  vertexY: number;
+  priority: number;
+};
+
 function isHorizontalSegment(
   segment: QuestionInstance["segments"][number],
   epsilon = 0.6
@@ -21,6 +31,64 @@ function isHorizontalSegment(
     Math.abs(segment.start.y - segment.end.y) <= epsilon &&
     Math.abs(segment.start.x - segment.end.x) >= 24
   );
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function resolveLabelLayout(entries: LabelLayoutEntry[]): Map<string, { x: number; y: number }> {
+  const placed: LabelLayoutEntry[] = [];
+  const byId = new Map<string, { x: number; y: number }>();
+
+  const ordered = [...entries].sort((a, b) => a.priority - b.priority);
+  for (const entry of ordered) {
+    let currentX = entry.x;
+    let currentY = entry.y;
+
+    for (let i = 0; i < 8; i += 1) {
+      let moved = false;
+      for (const other of placed) {
+        const minDistance = Math.max(12, (entry.hitRadius + other.hitRadius) * 0.82);
+        const actual = distance({ x: currentX, y: currentY }, { x: other.x, y: other.y });
+        if (actual >= minDistance) {
+          continue;
+        }
+
+        let ux = currentX - other.x;
+        let uy = currentY - other.y;
+        const len = Math.hypot(ux, uy);
+        if (len < 0.001) {
+          ux = currentX - entry.vertexX;
+          uy = currentY - entry.vertexY;
+        }
+        const norm = Math.hypot(ux, uy) || 1;
+        const push = minDistance - actual + 1.5;
+        currentX += (ux / norm) * push;
+        currentY += (uy / norm) * push;
+        moved = true;
+      }
+
+      currentX = clamp(currentX, 8, 312);
+      currentY = clamp(currentY, 10, 212);
+      if (!moved) {
+        break;
+      }
+    }
+
+    placed.push({
+      ...entry,
+      x: currentX,
+      y: currentY
+    });
+    byId.set(entry.id, { x: currentX, y: currentY });
+  }
+
+  return byId;
 }
 
 export function AngleDiagram({
@@ -32,19 +100,32 @@ export function AngleDiagram({
   onTapAngle,
   disabled = false
 }: AngleDiagramProps) {
-  const labelPlacementMode = getLabelPlacementMode();
   const selectedSet = new Set(selectedAngleIds);
   const interactiveSet = new Set(question.interactiveAngleIds);
   const visibleSet = new Set([...question.interactiveAngleIds, question.targetAngleId]);
+  const labelLayout = React.useMemo(() => {
+    const entries: LabelLayoutEntry[] = question.angles
+      .filter((angleDef) => visibleSet.has(angleDef.id))
+      .map((angleDef) => {
+        const point = angleLabelPoint(angleDef, 20);
+        const isTarget = angleDef.id === question.targetAngleId;
+        const isInteractive = interactiveSet.has(angleDef.id);
+        return {
+          id: angleDef.id,
+          x: point.x,
+          y: point.y,
+          hitRadius: isInteractive ? angleDef.hitRadius : 10,
+          vertexX: angleDef.vertex.x,
+          vertexY: angleDef.vertex.y,
+          priority: isTarget ? 0 : isInteractive ? 1 : 2
+        };
+      });
+    return resolveLabelLayout(entries);
+  }, [interactiveSet, question.angles, question.targetAngleId, visibleSet]);
   const anchorAngle = feedbackAnchorAngleId
     ? question.angles.find((angleDef) => angleDef.id === feedbackAnchorAngleId)
     : undefined;
-  const anchorPoint = anchorAngle
-    ? angleLabelPoint(anchorAngle, {
-        mode: labelPlacementMode,
-        distance: 20
-      })
-    : null;
+  const anchorPoint = anchorAngle ? labelLayout.get(anchorAngle.id) ?? null : null;
 
   return (
     <div className="mx-auto w-full max-w-[680px] rounded-lg border bg-white p-3">
@@ -96,10 +177,10 @@ export function AngleDiagram({
         })}
 
         {question.angles.filter((angleDef) => visibleSet.has(angleDef.id)).map((angleDef) => {
-          const labelPoint = angleLabelPoint(angleDef, {
-            mode: labelPlacementMode,
-            distance: 20
-          });
+          const labelPoint = labelLayout.get(angleDef.id);
+          if (!labelPoint) {
+            return null;
+          }
           const isTarget = angleDef.id === question.targetAngleId;
           const isSelected = selectedSet.has(angleDef.id);
           const isInteractive = interactiveSet.has(angleDef.id);
