@@ -10,6 +10,14 @@ function pairKey(pair: [string, string] | undefined): string {
   return [...pair].sort().join("|");
 }
 
+function isSingleLike(mode: QuestionPattern["mode"]): boolean {
+  return mode === "single" || mode === "180-single";
+}
+
+function isPairLike(mode: QuestionPattern["mode"]): boolean {
+  return mode === "pair" || mode === "180-pair";
+}
+
 function makeAttempt(
   entry: ReturnType<typeof buildQuestionCatalog>[number],
   wrongCount = 0
@@ -66,6 +74,8 @@ describe("problem engine", () => {
 
     const keys = new Set(questions.map((question) => question.questionKey));
     expect(keys.size).toBe(5);
+    expect(questions.slice(0, 3).every((question) => isSingleLike(question.mode))).toBe(true);
+    expect(questions.slice(3).every((question) => isPairLike(question.mode))).toBe(true);
 
     for (const question of questions) {
       const target = question.angles.find((angleDef) => angleDef.id === question.targetAngleId);
@@ -165,19 +175,31 @@ describe("problem engine", () => {
     const baseFigures = createBaseFigures();
     const patterns = createQuestionPatterns();
     const catalog = buildQuestionCatalog(baseFigures, patterns);
+    const singleCatalog = catalog.filter((entry) => isSingleLike(entry.mode));
+    const pairCatalog = catalog.filter((entry) => isPairLike(entry.mode));
 
-    const unseenKeys = new Set(catalog.slice(0, 12).map((entry) => entry.questionKey));
-    const seenEntries = catalog.filter((entry) => !unseenKeys.has(entry.questionKey));
+    const unseenSingle = singleCatalog.slice(-4).map((entry) => entry.questionKey);
+    const unseenPair = pairCatalog.slice(-3).map((entry) => entry.questionKey);
+    const seenSingle = singleCatalog.slice(0, Math.max(singleCatalog.length - 4, 0));
+    const seenPair = pairCatalog.slice(0, Math.max(pairCatalog.length - 3, 0));
 
-    const wrongEntry = seenEntries[0];
-    const attempts: AttemptLog[] = seenEntries.map((entry) => makeAttempt(entry, 0));
-    attempts.push(makeAttempt(wrongEntry, 1));
+    const wrongEntry = seenPair[0];
+    const attempts: AttemptLog[] = [...seenSingle, ...seenPair].map((entry) => makeAttempt(entry, 0));
+    if (wrongEntry) {
+      attempts.push(makeAttempt(wrongEntry, 1));
+    }
 
     const questions = buildSessionQuestions(baseFigures, patterns, 3, attempts);
-    const primaryKeys = new Set([...unseenKeys, wrongEntry.questionKey]);
+    const unseenSingleSet = new Set(unseenSingle);
+    const unseenPairSet = new Set(unseenPair);
 
     expect(questions).toHaveLength(5);
-    expect(questions.every((question) => primaryKeys.has(question.questionKey))).toBe(true);
+    expect(questions.slice(0, 3).every((question) => unseenSingleSet.has(question.questionKey))).toBe(true);
+    expect(
+      questions.slice(3).every(
+        (question) => unseenPairSet.has(question.questionKey) || question.questionKey === wrongEntry?.questionKey
+      )
+    ).toBe(true);
   });
 
   it("avoids consecutive same base figure and source pattern under normal pool size", () => {
@@ -189,5 +211,19 @@ describe("problem engine", () => {
       expect(questions[i].baseFigureId).not.toBe(questions[i - 1].baseFigureId);
       expect(questions[i].sourcePatternId).not.toBe(questions[i - 1].sourcePatternId);
     }
+  });
+
+  it("throws when single-like pool is insufficient", () => {
+    const baseFigures = createBaseFigures();
+    const patterns = createQuestionPatterns().filter((pattern) => isPairLike(pattern.mode));
+
+    expect(() => buildSessionQuestions(baseFigures, patterns, 3, [])).toThrow("single pool shortage");
+  });
+
+  it("throws when pair-like pool is insufficient", () => {
+    const baseFigures = createBaseFigures();
+    const patterns = createQuestionPatterns().filter((pattern) => isSingleLike(pattern.mode));
+
+    expect(() => buildSessionQuestions(baseFigures, patterns, 3, [])).toThrow("pair pool shortage");
   });
 });

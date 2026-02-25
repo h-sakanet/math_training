@@ -93,7 +93,13 @@ export default function App() {
 
   function startSession(nextLevel: DifficultyLevel = DEFAULT_LEVEL) {
     const pastAttempts = sessions.flatMap((session) => session.attempts);
-    const questions = buildSessionQuestions(baseFigures, questionPatterns, nextLevel, pastAttempts);
+    let questions;
+    try {
+      questions = buildSessionQuestions(baseFigures, questionPatterns, nextLevel, pastAttempts);
+    } catch {
+      toast.error("single系またはpair系の有効パターン不足のため、セッションを開始できません。");
+      return;
+    }
     const nextRun: SessionRun = {
       id: uniqueId("session"),
       level: nextLevel,

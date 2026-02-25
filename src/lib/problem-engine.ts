@@ -29,6 +29,8 @@ type CatalogEntry = {
 };
 
 export const SESSION_QUESTION_COUNT = 5;
+const SESSION_SINGLE_COUNT = 3;
+const SESSION_PAIR_COUNT = 2;
 
 const VARIANTS: SymmetryVariant[] = ["origin", "mirror_both"];
 
@@ -260,12 +262,14 @@ function pickFromPool(
   }
 }
 
-function selectCatalogEntries(
+function pickByPriority(
   catalog: CatalogEntry[],
-  pastAttempts: AttemptLog[],
-  count: number
-): CatalogEntry[] {
-  const history = buildHistoryState(pastAttempts);
+  history: Map<string, { seenCount: number; everWrong: boolean }>,
+  selected: CatalogEntry[],
+  selectedKeys: Set<string>,
+  addCount: number
+): void {
+  const targetCount = selected.length + addCount;
 
   const primary = catalog.filter((entry) => {
     const state = history.get(entry.questionKey);
@@ -274,24 +278,59 @@ function selectCatalogEntries(
     }
     return state.everWrong;
   });
+  pickFromPool(primary, selected, selectedKeys, targetCount);
 
-  const selected: CatalogEntry[] = [];
-  const selectedKeys = new Set<string>();
-
-  pickFromPool(primary, selected, selectedKeys, count);
-  if (selected.length < count) {
+  if (selected.length < targetCount) {
     const wrongSupplement = catalog.filter((entry) => history.get(entry.questionKey)?.everWrong);
-    pickFromPool(wrongSupplement, selected, selectedKeys, count);
+    pickFromPool(wrongSupplement, selected, selectedKeys, targetCount);
   }
-  if (selected.length < count) {
+  if (selected.length < targetCount) {
     const solvedSupplement = catalog.filter((entry) => {
       const state = history.get(entry.questionKey);
       return Boolean(state && !state.everWrong);
     });
-    pickFromPool(solvedSupplement, selected, selectedKeys, count);
+    pickFromPool(solvedSupplement, selected, selectedKeys, targetCount);
   }
+  if (selected.length < targetCount) {
+    pickFromPool(catalog, selected, selectedKeys, targetCount);
+  }
+}
+
+function selectCatalogEntries(
+  catalog: CatalogEntry[],
+  pastAttempts: AttemptLog[],
+  count: number
+): CatalogEntry[] {
+  if (count !== SESSION_QUESTION_COUNT) {
+    throw new Error(`unsupported question count: ${count}`);
+  }
+  if (SESSION_SINGLE_COUNT + SESSION_PAIR_COUNT !== count) {
+    throw new Error("session mode split is inconsistent");
+  }
+
+  const singleCatalog = catalog.filter((entry) => isSingleMode(entry.mode));
+  const pairCatalog = catalog.filter((entry) => isPairMode(entry.mode));
+
+  if (singleCatalog.length < SESSION_SINGLE_COUNT) {
+    throw new Error(`single pool shortage: ${singleCatalog.length}/${SESSION_SINGLE_COUNT}`);
+  }
+  if (pairCatalog.length < SESSION_PAIR_COUNT) {
+    throw new Error(`pair pool shortage: ${pairCatalog.length}/${SESSION_PAIR_COUNT}`);
+  }
+
+  const history = buildHistoryState(pastAttempts);
+  const selected: CatalogEntry[] = [];
+  const selectedKeys = new Set<string>();
+
+  pickByPriority(singleCatalog, history, selected, selectedKeys, SESSION_SINGLE_COUNT);
+  if (selected.length < SESSION_SINGLE_COUNT) {
+    throw new Error(`single selection failed: ${selected.length}/${SESSION_SINGLE_COUNT}`);
+  }
+
+  pickByPriority(pairCatalog, history, selected, selectedKeys, SESSION_PAIR_COUNT);
   if (selected.length < count) {
-    pickFromPool(catalog, selected, selectedKeys, count);
+    const pairSelected = selected.length - SESSION_SINGLE_COUNT;
+    throw new Error(`pair selection failed: ${Math.max(pairSelected, 0)}/${SESSION_PAIR_COUNT}`);
   }
 
   return selected.slice(0, count);
