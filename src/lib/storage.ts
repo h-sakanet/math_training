@@ -30,6 +30,7 @@ type AppDb = {
 const DB_NAME = "math-training-db";
 const DB_VERSION = 3;
 const MIGRATION_NOTICE_KEY = "migration_notice_v3";
+const ACTIVE_CHECKPOINT_STARTED_AT_KEY = "active_checkpoint_started_at";
 let progressWriteQueue: Promise<void> = Promise.resolve();
 
 const dbPromise = openDB<AppDb>(DB_NAME, DB_VERSION, {
@@ -119,6 +120,43 @@ export async function consumeMigrationNotice(): Promise<string | null> {
   await store.delete(MIGRATION_NOTICE_KEY);
   await tx.done;
   return record.value;
+}
+
+function parseEpoch(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+
+export async function getActiveCheckpointStartedAt(): Promise<number | null> {
+  const db = await dbPromise;
+  const record = await db.get("meta", ACTIVE_CHECKPOINT_STARTED_AT_KEY);
+  return parseEpoch(record?.value);
+}
+
+export async function setActiveCheckpointStartedAt(epochMs: number): Promise<void> {
+  const startedAt = Math.floor(epochMs);
+  if (!Number.isFinite(startedAt) || startedAt <= 0) {
+    throw new Error("invalid checkpoint timestamp");
+  }
+  if (startedAt > Date.now()) {
+    throw new Error("checkpoint timestamp cannot be in the future");
+  }
+  const db = await dbPromise;
+  await db.put("meta", {
+    key: ACTIVE_CHECKPOINT_STARTED_AT_KEY,
+    value: String(startedAt)
+  });
+}
+
+export async function clearActiveCheckpointStartedAt(): Promise<void> {
+  const db = await dbPromise;
+  await db.delete("meta", ACTIVE_CHECKPOINT_STARTED_AT_KEY);
 }
 
 export async function getSessions(): Promise<SessionLog[]> {

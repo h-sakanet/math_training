@@ -114,6 +114,27 @@ export interface PatternStats {
   lastPlayedAt: number;
 }
 
+export interface ComparisonPeriodStats {
+  attempts: number;
+  solvedAttempts: number;
+  averageMs: number | null;
+  accuracyRate: number | null;
+}
+
+export interface PatternComparisonRow {
+  patternKey: string;
+  oldAttempts: number;
+  newAttempts: number;
+  oldSolvedAttempts: number;
+  newSolvedAttempts: number;
+  oldAverageMs: number | null;
+  newAverageMs: number | null;
+  deltaMs: number | null;
+  oldAccuracyRate: number | null;
+  newAccuracyRate: number | null;
+  deltaAccuracyRate: number | null;
+}
+
 export interface UnitCard {
   id: string;
   title: string;

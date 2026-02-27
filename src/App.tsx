@@ -17,9 +17,12 @@ import {
 } from "@/lib/templates";
 import { uniqueId } from "@/lib/math";
 import {
+  clearActiveCheckpointStartedAt,
   consumeMigrationNotice,
+  getActiveCheckpointStartedAt,
   getSessions,
-  saveSession
+  saveSession,
+  setActiveCheckpointStartedAt
 } from "@/lib/storage";
 import type { DifficultyLevel, SessionLog, SessionRun, UnitCard } from "@/lib/types";
 
@@ -74,11 +77,16 @@ export default function App() {
   const [run, setRun] = React.useState<SessionRun | null>(null);
   const [latestSession, setLatestSession] = React.useState<SessionLog | null>(null);
   const [sessions, setSessions] = React.useState<SessionLog[]>([]);
+  const [activeCheckpointStartedAt, setActiveCheckpointStartedAtState] = React.useState<number | null>(null);
 
   const reload = React.useCallback(async () => {
-    const allSessions = await getSessions();
+    const [allSessions, checkpointStartedAt] = await Promise.all([
+      getSessions(),
+      getActiveCheckpointStartedAt()
+    ]);
     setSessions(allSessions);
     setLatestSession((current) => current ?? allSessions[0] ?? null);
+    setActiveCheckpointStartedAtState(checkpointStartedAt);
   }, []);
 
   React.useEffect(() => {
@@ -92,7 +100,10 @@ export default function App() {
   }, [reload]);
 
   function startSession(nextLevel: DifficultyLevel = DEFAULT_LEVEL) {
-    const pastAttempts = sessions.flatMap((session) => session.attempts);
+    const allAttempts = sessions.flatMap((session) => session.attempts);
+    const pastAttempts = activeCheckpointStartedAt === null
+      ? allAttempts
+      : allAttempts.filter((attempt) => attempt.startedAt >= activeCheckpointStartedAt);
     let questions;
     try {
       questions = buildSessionQuestions(baseFigures, questionPatterns, nextLevel, pastAttempts);
@@ -116,6 +127,23 @@ export default function App() {
     setLatestSession(session);
     await reload();
     setScreen("results");
+  }
+
+  async function startNewCheckpoint() {
+    const now = Date.now();
+    try {
+      await setActiveCheckpointStartedAt(now);
+      setActiveCheckpointStartedAtState(now);
+      toast.success("比較開始点を設定しました。");
+    } catch {
+      toast.error("比較開始点の設定に失敗しました。");
+    }
+  }
+
+  async function clearCheckpoint() {
+    await clearActiveCheckpointStartedAt();
+    setActiveCheckpointStartedAtState(null);
+    toast.success("比較を解除しました。");
   }
 
   return (
@@ -148,6 +176,9 @@ export default function App() {
           baseFigures={baseFigures}
           questionPatterns={questionPatterns}
           sessions={sessions}
+          activeCheckpointStartedAt={activeCheckpointStartedAt}
+          onStartNewCheckpoint={startNewCheckpoint}
+          onClearCheckpoint={clearCheckpoint}
           onBackHome={() => setScreen("home")}
         />
       )}
