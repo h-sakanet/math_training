@@ -6,7 +6,7 @@ import type { UnitCard } from "@/lib/types";
 
 type HomeScreenProps = {
   unitCards: UnitCard[];
-  onStart: () => void;
+  onStart: (unitId: string) => void;
   onOpenData: () => void;
   onOpenCalibration: () => void;
 };
@@ -47,15 +47,17 @@ export function HomeScreen({
             </CardHeader>
             <CardFooter className="justify-between">
               {unit.status === "active" ? (
-                <Button onClick={onStart}>5問を開始</Button>
+                <Button onClick={() => onStart(unit.id)}>
+                  {unit.id === "quadrilaterals" ? "観察する" : "5問を開始"}
+                </Button>
               ) : (
                 <Badge variant="outline">準備中</Badge>
               )}
-              {unit.status === "active" ? (
+              {unit.id === "angles" && unit.status === "active" ? (
                 <Button variant="outline" onClick={onOpenData}>データを確認</Button>
               ) : (
                 <Button variant="outline" disabled>
-                  近日追加
+                  {unit.status === "active" ? "記録なし" : "近日追加"}
                 </Button>
               )}
             </CardFooter>

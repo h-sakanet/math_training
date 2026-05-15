@@ -2,6 +2,7 @@ import * as React from "react";
 import { toast, Toaster } from "sonner";
 import { DataInspectionScreen } from "@/components/data-inspection-screen";
 import { HomeScreen } from "@/components/home-screen";
+import { QuadrilateralObserverScreen } from "@/components/quadrilateral-observer-screen";
 import { ResultsScreen } from "@/components/results-screen";
 import { TemplateCalibrationScreen } from "@/components/template-calibration-screen";
 import { TrainingScreen } from "@/components/training-screen";
@@ -26,7 +27,7 @@ import {
 } from "@/lib/storage";
 import type { DifficultyLevel, SessionLog, SessionRun, UnitCard } from "@/lib/types";
 
-type Screen = "home" | "training" | "results" | "data";
+type Screen = "home" | "training" | "results" | "data" | "quadrilaterals";
 
 const unitCards: UnitCard[] = [
   {
@@ -34,6 +35,12 @@ const unitCards: UnitCard[] = [
     title: "角と角度",
     status: "active",
     description: "複合図で角の対応を見抜く反復トレーニング"
+  },
+  {
+    id: "quadrilaterals",
+    title: "四角形",
+    status: "active",
+    description: "図形を動かしながら辺・角・対角線の性質を観察"
   },
   {
     id: "ratio",
@@ -122,6 +129,15 @@ export default function App() {
     setScreen("training");
   }
 
+  function startUnit(unitId: string) {
+    if (unitId === "quadrilaterals") {
+      setScreen("quadrilaterals");
+      return;
+    }
+
+    startSession();
+  }
+
   async function handleFinish(session: SessionLog) {
     await saveSession(session);
     setLatestSession(session);
@@ -151,7 +167,7 @@ export default function App() {
       {screen === "home" && (
         <HomeScreen
           unitCards={unitCards}
-          onStart={() => startSession()}
+          onStart={startUnit}
           onOpenData={() => setScreen("data")}
           onOpenCalibration={() => {
             window.location.assign("/ui-preview/template-calibration");
@@ -181,6 +197,10 @@ export default function App() {
           onClearCheckpoint={clearCheckpoint}
           onBackHome={() => setScreen("home")}
         />
+      )}
+
+      {screen === "quadrilaterals" && (
+        <QuadrilateralObserverScreen onBackHome={() => setScreen("home")} />
       )}
 
       <Toaster richColors position="top-center" />
