@@ -48,18 +48,18 @@ export function HomeScreen({
             <CardFooter className="justify-between">
               {unit.status === "active" ? (
                 <Button onClick={() => onStart(unit.id)}>
-                  {unit.id === "quadrilaterals" ? "観察する" : "5問を開始"}
+                  {unit.id === "quadrilaterals" ? "観察する" : unit.id === "fractions" ? "レベルを選ぶ" : "5問を開始"}
                 </Button>
               ) : (
                 <Badge variant="outline">準備中</Badge>
               )}
               {unit.id === "angles" && unit.status === "active" ? (
                 <Button variant="outline" onClick={onOpenData}>データを確認</Button>
-              ) : (
+              ) : unit.id !== "fractions" ? (
                 <Button variant="outline" disabled>
                   {unit.status === "active" ? "記録なし" : "近日追加"}
                 </Button>
-              )}
+              ) : null}
             </CardFooter>
           </Card>
         ))}

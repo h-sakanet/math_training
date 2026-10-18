@@ -2,6 +2,7 @@ import * as React from "react";
 import { toast, Toaster } from "sonner";
 import { DataInspectionScreen } from "@/components/data-inspection-screen";
 import { HomeScreen } from "@/components/home-screen";
+import { FractionsScreen } from "@/components/fractions-screen";
 import { QuadrilateralObserverScreen } from "@/components/quadrilateral-observer-screen";
 import { ResultsScreen } from "@/components/results-screen";
 import { TemplateCalibrationScreen } from "@/components/template-calibration-screen";
@@ -27,7 +28,7 @@ import {
 } from "@/lib/storage";
 import type { DifficultyLevel, SessionLog, SessionRun, UnitCard } from "@/lib/types";
 
-type Screen = "home" | "training" | "results" | "data" | "quadrilaterals";
+type Screen = "home" | "training" | "results" | "data" | "quadrilaterals" | "fractions";
 
 const unitCards: UnitCard[] = [
   {
@@ -41,6 +42,12 @@ const unitCards: UnitCard[] = [
     title: "四角形",
     status: "active",
     description: "図形を動かしながら辺・角・対角線の性質を観察"
+  },
+  {
+    id: "fractions",
+    title: "分数",
+    status: "active",
+    description: "掛け算から虫食い算まで、4段階で分数を練習"
   },
   {
     id: "ratio",
@@ -130,6 +137,10 @@ export default function App() {
   }
 
   function startUnit(unitId: string) {
+    if (unitId === "fractions") {
+      setScreen("fractions");
+      return;
+    }
     if (unitId === "quadrilaterals") {
       setScreen("quadrilaterals");
       return;
@@ -201,6 +212,10 @@ export default function App() {
 
       {screen === "quadrilaterals" && (
         <QuadrilateralObserverScreen onBackHome={() => setScreen("home")} />
+      )}
+
+      {screen === "fractions" && (
+        <FractionsScreen onBackHome={() => setScreen("home")} />
       )}
 
       <Toaster richColors position="top-center" />
