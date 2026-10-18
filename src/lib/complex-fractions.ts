@@ -120,10 +120,13 @@ export function buildComplexProblem(stages: 2 | 3 | 4, random: () => number = Ma
     for (let depth = 0; depth < stages; depth += 1) {
       const options: { operator: ArithmeticOperator; childOnLeft: boolean; values: { known: Fraction; result: Fraction }[] }[] = [];
       for (const operator of ["+", "−", "×", "÷"] as const) {
+        // Start with addition or subtraction around the blank, then build the outer operations.
+        if (depth === 0 && (operator === "×" || operator === "÷")) continue;
         for (const childOnLeft of [true, false]) {
           const parentheses = needsComplexParentheses(operator, expression, !childOnLeft);
-          // Parenthesized groups must be multiplied or divided, never added or subtracted.
-          if (parentheses && (operator === "+" || operator === "−")) continue;
+          // Parentheses group addition/subtraction and are multiplied or divided from outside.
+          if (parentheses && (operator === "+" || operator === "−" ||
+            (expression.kind === "operation" && (expression.operator === "×" || expression.operator === "÷")))) continue;
           // Every problem includes an actual parenthesized group used in × or ÷.
           if (depth === stages - 1 && !hasMultiplicativeGroup && !parentheses) continue;
           const values = knownValues.flatMap((known) => {

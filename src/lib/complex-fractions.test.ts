@@ -43,9 +43,9 @@ function expectSchoolNumber(fraction: Fraction) {
 }
 
 describe("complex missing-number generation", () => {
-  it.each([2, 3, 4] as const)("always includes a multiplied or divided parenthesized group at %i stages", (stages) => {
+  it.each([2, 3, 4] as const)("groups addition/subtraction inside parentheses with multiplication/division outside at %i stages", (stages) => {
     const random = seededRandom(418 + stages);
-    for (let index = 0; index < 100; index += 1) {
+    for (let index = 0; index < 300; index += 1) {
       const problem = buildComplexProblem(stages, random);
       let groups = 0;
       for (const node of nodes(problem.expression)) {
@@ -54,11 +54,17 @@ describe("complex missing-number generation", () => {
           if (needsComplexParentheses(node.operator, child, right)) {
             groups += 1;
             expect(["×", "÷"]).toContain(node.operator);
+            expect(child.kind).toBe("operation");
+            if (child.kind === "operation") expect(["+", "−"]).toContain(child.operator);
           }
+        }
+        if (node.left.kind !== "operation" && node.right.kind !== "operation") {
+          expect(["+", "−"]).toContain(node.operator);
         }
       }
       expect(groups).toBeGreaterThan(0);
       expect(nodes(problem.expression).some((node) => node.kind === "operation" && (node.operator === "×" || node.operator === "÷"))).toBe(true);
+      expect(nodes(problem.expression).some((node) => node.kind === "operation" && (node.operator === "+" || node.operator === "−"))).toBe(true);
     }
   });
 
