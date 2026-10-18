@@ -82,16 +82,16 @@ function FractionQuestionStep({ level, question, attempt, isLast, onAnswer, onNe
   onAnswer: (attempt: FractionAttempt) => void;
   onNext: () => void;
 }) {
+  const solution = getFractionSolution(question);
+  const isInteger = solution.denominator === 1;
   const [numerator, setNumerator] = React.useState("");
   const [denominator, setDenominator] = React.useState("");
-  const [active, setActive] = React.useState<"numerator" | "denominator">("numerator");
+  const [active, setActive] = React.useState<"numerator" | "denominator">(isInteger ? "numerator" : "denominator");
   const [hintsUsed, setHintsUsed] = React.useState(0);
   const startedAt = React.useRef(performance.now());
   const submitted = React.useRef(false);
-  const solution = getFractionSolution(question);
   const complex = question.complex;
   const answerPosition = getFractionAnswerPosition(question);
-  const isInteger = solution.denominator === 1;
   const complete = numerator !== "" && (isInteger || denominator !== "");
 
   const input = React.useCallback((key: string) => {
