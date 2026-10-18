@@ -234,6 +234,7 @@ body {
   white-space: normal;
 }
 
+
 .complex-problem-equation {
   min-width: 100%;
   min-height: 220px;
@@ -253,4 +254,285 @@ body {
 .complex-step-equation {
   min-height: 48px;
   font-size: clamp(18px, 2.5vw, 24px);
+}
+
+.fraction-keypad-hint {
+  display: none;
+}
+
+/* Fit tablet landscape viewports, including the space left by Safari's toolbars. */
+@media (min-width: 900px) and (max-height: 850px) and (orientation: landscape) {
+  .fraction-app-shell {
+    --fraction-top: max(8px, env(safe-area-inset-top));
+    --fraction-bottom: max(8px, env(safe-area-inset-bottom));
+    padding: var(--fraction-top) max(16px, env(safe-area-inset-right)) var(--fraction-bottom) max(16px, env(safe-area-inset-left));
+  }
+
+  .fraction-levels-screen,
+  .fraction-training-screen {
+    height: calc(100vh - var(--fraction-top) - var(--fraction-bottom));
+    height: calc(100dvh - var(--fraction-top) - var(--fraction-bottom));
+    gap: 8px;
+  }
+
+  .fraction-levels-heading,
+  .fraction-levels-note,
+  .fraction-training-heading {
+    flex-shrink: 0;
+  }
+
+  .fraction-levels-heading-content {
+    padding: 8px 14px;
+  }
+
+  .fraction-levels-heading-content > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .fraction-levels-heading-copy {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  .fraction-levels-heading-copy > p {
+    margin-top: 0;
+    font-size: 12px;
+  }
+
+  .fraction-levels-heading-copy h3 {
+    font-size: 22px;
+  }
+
+  .fraction-levels-grid {
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .fraction-level-card {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .fraction-level-card-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 10px 14px 6px;
+  }
+
+  .fraction-level-card-header > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .fraction-level-card-header > p {
+    grid-column: 1 / -1;
+    font-size: 11px;
+    line-height: 14px;
+  }
+
+  .fraction-level-card-header h3 {
+    font-size: 18px;
+    line-height: 22px;
+  }
+
+  .fraction-level-card-content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 14px 10px;
+  }
+
+  .fraction-level-card-content > * {
+    margin-top: 0;
+  }
+
+  .fraction-level-history {
+    flex: 1;
+    min-height: 0;
+    padding: 6px 10px;
+  }
+
+  .fraction-level-history > p {
+    margin-bottom: 2px;
+    font-size: 11px;
+    line-height: 14px;
+  }
+
+  .fraction-level-history th,
+  .fraction-level-history td {
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 16px;
+  }
+
+  .fraction-history-hints {
+    display: inline;
+    margin-left: 6px;
+    font-size: 10px;
+  }
+
+  .fraction-level-card-content > button {
+    flex-shrink: 0;
+  }
+
+  .fraction-levels-note {
+    font-size: 11px;
+    line-height: 14px;
+  }
+
+  .fraction-training-heading h1 {
+    font-size: 20px;
+    line-height: 26px;
+  }
+
+  .fraction-training-heading p {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .fraction-training-card {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .fraction-training-header {
+    flex-shrink: 0;
+    padding: 8px 16px 10px;
+  }
+
+  .fraction-training-content {
+    flex: 1;
+    min-height: 0;
+    padding: 0 16px 12px;
+  }
+
+  .fraction-workspace {
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) clamp(180px, 20vw, 220px);
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .fraction-question-main {
+    min-height: 0;
+    gap: 8px;
+  }
+
+  .fraction-question-guide {
+    flex-shrink: 0;
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  .fraction-equation {
+    flex: 1;
+    min-height: 150px;
+    font-size: 52px;
+  }
+
+  .fraction-answer {
+    width: 72px;
+  }
+
+  .fraction-answer-box {
+    height: 70px;
+  }
+
+  .fraction-answer-bottom {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .fraction-assistance {
+    min-height: 0;
+  }
+
+  .fraction-question-feedback {
+    min-height: 0;
+  }
+
+  .complex-problem-scroll {
+    flex-shrink: 0;
+    height: 166px;
+  }
+
+  .complex-problem-equation {
+    height: 100%;
+    min-height: 0;
+    font-size: clamp(24px, 2.6vw, 30px);
+    padding: 6px 4px;
+  }
+
+  .complex-problem-equation .fraction-answer {
+    width: 56px;
+  }
+
+  .complex-problem-equation .fraction-answer-box {
+    height: 58px;
+  }
+
+  .fraction-complex-assistance {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    padding: 3px 4px;
+    border-radius: 8px;
+  }
+
+  .fraction-inline-hint {
+    display: none;
+  }
+
+  .fraction-keypad-hint {
+    display: inline-flex;
+  }
+
+  .fraction-hint-area > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .complex-hint {
+    padding: 10px;
+  }
+
+  .complex-hint .complex-reverse-step {
+    padding: 8px;
+  }
+
+  .complex-hint .complex-scroll {
+    margin-top: 6px;
+  }
+
+  .complex-hint .complex-step-equation {
+    font-size: 20px;
+  }
+
+  .fraction-submit {
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+
+  .fraction-keypad {
+    position: static;
+    align-self: start;
+    padding: 12px;
+  }
+
+  .fraction-key {
+    height: 62px;
+    font-size: 26px;
+  }
 }

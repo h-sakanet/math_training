@@ -38,16 +38,16 @@ export function FractionTrainingScreen({ run, onFinish, onBack }: TrainingProps)
   }, [index, run.level]);
 
   return (
-    <div ref={screen} className="mx-auto w-full max-w-6xl space-y-4">
-      <div className="flex items-center justify-between gap-2">
+    <div ref={screen} className="fraction-training-screen mx-auto flex w-full max-w-6xl flex-col gap-4">
+      <div className="fraction-training-heading flex items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-sky-700">分数 · レベル{run.level}</p>
           <h1 className="text-xl font-semibold sm:text-2xl">{FRACTION_LEVELS[run.level - 1].title}</h1>
         </div>
         <Button variant="outline" onClick={onBack}>レベル選択へ</Button>
       </div>
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="fraction-training-card">
+        <CardHeader className="fraction-training-header pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">問題 {index + 1} / 5</CardTitle>
             <span className="text-sm text-muted-foreground">約分した答えを入力</span>
@@ -163,12 +163,21 @@ function FractionQuestionStep({ level, question, attempt, isLast, onAnswer, onNe
     </span>;
   }
 
+  function hintButton(className: string) {
+    return <Button className={className} variant="outline" disabled={hintsUsed >= 2}
+      onClick={() => setHintsUsed((value) => Math.min(2, value + 1))}>
+      {hintsUsed === 0 ? "ヒント：どこから考える？" : hintsUsed === 1 ? "最初の逆算を見る" : "ヒントを表示中"}
+    </Button>;
+  }
+
   return (
     <div className={`fraction-workspace ${complex ? "complex-workspace" : ""}`}>
-      <div className="min-w-0 space-y-5">
-        <p className="text-sm text-muted-foreground">□をタップして、右のテンキーで入力</p>
+      <div className="fraction-question-main flex min-w-0 flex-col gap-5">
+        <div className="fraction-question-guide flex flex-wrap items-center justify-between gap-2 text-sm">
+          <p className="text-muted-foreground">□をタップして、右のテンキーで入力</p>
+          {complex && <p className="font-medium text-sky-700">{complex.stages}段階の逆算</p>}
+        </div>
         {complex ? <>
-          <p className="text-sm font-medium text-sky-700">{complex.stages}段階の逆算</p>
           <div className="complex-scroll complex-problem-scroll" tabIndex={0} role="group" aria-label="複雑な虫食い算の問題">
             <div className="complex-problem-equation">
               <ComplexExpressionView expression={complex.expression} blank={answerFields()}
@@ -177,12 +186,6 @@ function FractionQuestionStep({ level, question, attempt, isLast, onAnswer, onNe
             </div>
           </div>
           <p className="text-xs text-muted-foreground sm:hidden">長い式は左右に動かせます。</p>
-          {!attempt && <div className="space-y-3">
-            <Button variant="outline" disabled={hintsUsed >= 2} onClick={() => setHintsUsed((value) => Math.min(2, value + 1))}>
-              {hintsUsed === 0 ? "ヒント：どこから考える？" : hintsUsed === 1 ? "最初の逆算を見る" : "ヒントを表示中"}
-            </Button>
-            <ComplexFractionHint problem={complex} hintsUsed={hintsUsed} />
-          </div>}
         </> : <div className="fraction-equation" role="group" aria-label={`${FRACTION_LEVELS[level - 1].title}の問題`}>
           {equationValue("left")}
           <span className="fraction-operator">{getFractionOperator(question, level)}</span>
@@ -190,7 +193,12 @@ function FractionQuestionStep({ level, question, attempt, isLast, onAnswer, onNe
           <span className="fraction-operator">＝</span>
           {equationValue("result")}
         </div>}
-        <div className={complex ? "" : "min-h-36"} aria-live="polite" aria-atomic="true">
+        <div className={`fraction-assistance space-y-3 ${complex ? "fraction-complex-assistance" : ""}`}>
+          {!attempt && complex && <div className="fraction-hint-area space-y-3">
+            {hintButton("fraction-inline-hint")}
+            <ComplexFractionHint problem={complex} hintsUsed={hintsUsed} />
+          </div>}
+        <div className={`fraction-question-feedback ${complex ? "" : "min-h-36"}`} aria-live="polite" aria-atomic="true">
           {attempt ? (
             <div className={`rounded-xl border p-3 sm:p-4 ${attempt.correct
               ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
@@ -206,10 +214,11 @@ function FractionQuestionStep({ level, question, attempt, isLast, onAnswer, onNe
           ) : null}
         </div>
         {attempt && complex && <ComplexFractionExplanation problem={complex} />}
+        </div>
         {attempt ? (
-          <Button className="w-full" onClick={onNext}>{isLast ? "結果を見る" : "次の問題へ"}</Button>
+          <Button className="fraction-submit w-full" onClick={onNext}>{isLast ? "結果を見る" : "次の問題へ"}</Button>
         ) : (
-          <Button className="w-full" disabled={!complete} onClick={answer}>回答する</Button>
+          <Button className="fraction-submit w-full" disabled={!complete} onClick={answer}>回答する</Button>
         )}
       </div>
       <aside className="fraction-keypad" aria-label="テンキー">
@@ -227,6 +236,7 @@ function FractionQuestionStep({ level, question, attempt, isLast, onAnswer, onNe
             >{key === "clear" ? "C" : key === "backspace" ? "⌫" : key}</Button>
           ))}
         </div>
+        {!attempt && complex && hintButton("fraction-keypad-hint mt-3 h-auto w-full whitespace-normal px-2 py-2")}
       </aside>
     </div>
   );

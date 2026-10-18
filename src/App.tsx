@@ -174,7 +174,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-cyan-50 px-4 py-5 text-foreground md:px-8">
+    <div className={`min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-cyan-50 px-4 py-5 text-foreground md:px-8 ${screen === "fractions" ? "fraction-app-shell" : ""}`}>
       {screen === "home" && (
         <HomeScreen
           unitCards={unitCards}

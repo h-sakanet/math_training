@@ -5,7 +5,7 @@ import { ComplexExpressionView } from "@/components/complex-fraction-expression"
 import { complexVerification, reverseComplexSteps, type ComplexProblem, type ReverseStep } from "@/lib/complex-fractions";
 
 function ReverseStepView({ step, index }: { step: ReverseStep; index: number }) {
-  return <div className="rounded-lg border border-sky-100 bg-white p-3">
+  return <div className="complex-reverse-step rounded-lg border border-sky-100 bg-white p-3">
     <p className="text-sm font-medium text-sky-800">手順 {index + 1}</p>
     <p className="mt-1 text-sm leading-relaxed">{step.reason}</p>
     <div className="complex-scroll mt-3" tabIndex={0} aria-label={`手順${index + 1}の途中式`}>
@@ -22,7 +22,7 @@ export function ComplexFractionHint({ problem, hintsUsed }: { problem: ComplexPr
   if (!hintsUsed) return null;
   const steps = reverseComplexSteps(problem);
   const operator = problem.expression.kind === "operation" ? problem.expression.operator : "";
-  return <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50 p-3" aria-live="polite">
+  return <div className="complex-hint space-y-3 rounded-xl border border-sky-200 bg-sky-50 p-3" aria-live="polite">
     <p className="text-sm leading-relaxed">青いまとまりを、ひとつの数と考えよう。<br />
       最後に計算する「{operator}」から、逆にたどります。</p>
     {hintsUsed >= 2 && <ReverseStepView step={steps[0]} index={0} />}

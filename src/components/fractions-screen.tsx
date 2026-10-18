@@ -142,11 +142,23 @@ export function FractionsScreen({ onBackHome }: { onBackHome: () => void }) {
       onFinish={(session) => { setResult(session); void persist(session); }} />;
   }
 
+  return <FractionLevelsScreen sessions={sessions} loading={loading} loadError={loadError}
+    onReload={() => void loadHistory()} onStart={start} onBackHome={onBackHome} />;
+}
+
+export function FractionLevelsScreen({ sessions, loading, loadError, onReload, onStart, onBackHome }: {
+  sessions: FractionSession[];
+  loading: boolean;
+  loadError: boolean;
+  onReload: () => void;
+  onStart: (level: FractionTrainingLevel) => void;
+  onBackHome: () => void;
+}) {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <div className="space-y-2">
+    <div className="fraction-levels-screen mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <Card className="fraction-levels-heading">
+        <CardHeader className="fraction-levels-heading-content flex flex-row items-center justify-between gap-3">
+          <div className="fraction-levels-heading-copy flex flex-col gap-2">
             <CardTitle className="text-2xl">分数</CardTitle>
             <p className="text-sm text-muted-foreground">4つのレベルで、分数の計算を練習しましょう。</p>
           </div>
@@ -154,22 +166,22 @@ export function FractionsScreen({ onBackHome }: { onBackHome: () => void }) {
         </CardHeader>
       </Card>
       {loadError && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-rose-700">
-        <span>履歴を読み込めませんでした。</span><Button variant="outline" onClick={() => void loadHistory()}>再読み込み</Button>
+        <span>履歴を読み込めませんでした。</span><Button variant="outline" onClick={onReload}>再読み込み</Button>
       </div>}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="fraction-levels-grid grid gap-4 md:grid-cols-2">
         {FRACTION_LEVELS.map(({ level, title }) => {
           const recent = recentFractionSessions(sessions, level);
           return (
-            <Card key={level}>
-              <CardHeader>
+            <Card key={level} className="fraction-level-card">
+              <CardHeader className="fraction-level-card-header">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-sky-700">レベル {level}</p>
                 </div>
                 <CardTitle className="text-xl">{title}</CardTitle>
                 {level === 4 && <p className="text-xs text-muted-foreground">2 → 2 → 3 → 3 → 4段階 · ヒントと途中式つき</p>}
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg bg-slate-50 p-3">
+              <CardContent className="fraction-level-card-content flex flex-col gap-4">
+                <div className="fraction-level-history rounded-lg bg-slate-50 p-3">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">直近5回の記録 · 新しい順</p>
                   <table className="w-full text-right text-sm">
                     <thead><tr className="text-xs text-muted-foreground">
@@ -185,7 +197,7 @@ export function FractionsScreen({ onBackHome }: { onBackHome: () => void }) {
                             month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"
                           })}</td>
                           <td className="py-1 font-medium">{Math.round(metrics.accuracy * 100)}%
-                            {level === 4 && <p className="text-xs font-normal text-muted-foreground">自力 {fractionHintMetrics(session.attempts).correctWithoutHints}問</p>}
+                            {level === 4 && <p className="fraction-history-hints text-xs font-normal text-muted-foreground">自力 {fractionHintMetrics(session.attempts).correctWithoutHints}問</p>}
                           </td>
                           <td className="py-1">{fractionSeconds(metrics.averageMs)} 秒/問</td>
                         </tr>;
@@ -196,7 +208,7 @@ export function FractionsScreen({ onBackHome }: { onBackHome: () => void }) {
                     </tbody>
                   </table>
                 </div>
-                <Button className="w-full" onClick={() => start(level)}>
+                <Button className="w-full" onClick={() => onStart(level)}>
                   5問にチャレンジ
                 </Button>
               </CardContent>
@@ -204,7 +216,7 @@ export function FractionsScreen({ onBackHome }: { onBackHome: () => void }) {
           );
         })}
       </div>
-      <p className="text-xs text-muted-foreground">回答速度は1問あたりの平均回答時間です。履歴はこの端末のブラウザに保存されます。</p>
+      <p className="fraction-levels-note text-xs text-muted-foreground">回答速度は1問あたりの平均回答時間です。履歴はこの端末のブラウザに保存されます。</p>
     </div>
   );
 }
